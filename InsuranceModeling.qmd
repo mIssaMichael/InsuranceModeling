@@ -1,0 +1,159 @@
+---
+title: "Flexible Insurance Modeling with GAMS and Gaussian Processes in Stan"
+author: "Michael Issa"
+date: "February 2005"
+date-format: "MMMM YYYY"
+toc: true
+number-sections: true
+highlight: pygments
+crossref:
+  lst-title: "Stan Program"
+filters:
+   - include-code-files
+format:
+  html:
+    html-math-method: katex
+    theme:
+      - lux
+      - custom.scss
+    standalone: true
+    embed-resources: true
+    code-overflow: wrap
+    linkcolor: "#B97C7C"
+  pdf:
+    keep-tex: true
+    fig-width: 5.5
+    fig-height: 5.5
+    code-overflow: wrap
+    monofontoptions:
+      - Scale=0.5
+format-links: false
+---
+
+#
+
+> Willard van Orman Quine once said that he had a preference for a desert ontology. This was in an earlier day when concerns with logical structure and ontological simplicity reigned supreme... But Ockham's razor has a curiously ambiguous form... How do we determine what is necessary? With the right standards, one could remain an Ockhamite while recognizing a world which has the rich, multi-layered, and interdependent ontology of the tropical rain forest - that is, our world. It is tempting to believe that recognizing such a world view requires adopting lax standards, but I think the standards for this transformation are not lax, but only different. - William C. Wimsatt
+
+
+# Imports
+
+```{python}
+import arviz as az
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import requests
+import warnings
+import pyreadr
+import os
+import cmdstanpy
+from cmdstanpy import CmdStanModel
+
+warnings.filterwarnings("ignore")
+
+# Graphic configuration
+c_light = "#DCBCBC"
+c_light_highlight = "#C79999"
+c_mid = "#B97C7C"
+c_mid_highlight = "#A25050"
+c_dark = "#8F2727"
+c_dark_highlight = "#7C0000"
+
+c_light_teal = "#6B8E8E"
+c_mid_teal = "#487575"
+c_dark_teal = "#1D4F4F"
+
+RANDOM_SEED = 58583389
+np.random.seed(RANDOM_SEED)
+az.style.use("arviz-whitegrid")
+
+plt.rcParams['font.family'] = 'serif'
+
+plt.rcParams['xtick.labelsize'] = 12
+plt.rcParams['ytick.labelsize'] = 12
+plt.rcParams['axes.labelsize'] = 12
+plt.rcParams['axes.titlesize'] = 12
+
+plt.rcParams['axes.spines.top'] = False
+plt.rcParams['axes.spines.right'] = False
+plt.rcParams['axes.spines.left'] = True
+plt.rcParams['axes.spines.bottom'] = True
+
+plt.rcParams['axes.xmargin'] = 0
+plt.rcParams['axes.ymargin'] = 0
+
+plt.subplots_adjust(left=0.15, bottom=0.15, right=0.9, top=0.85)
+
+current_working_directory = os.getcwd()
+```
+
+```{python}
+# cmdstanpy.install_cmdstan(compiler=True)
+```
+
+# Load Data
+Our dataset is the French Motor Third-Part Liability dataset. The French Motor Third-Party Liability datasets consist of two pairs of complementary files. The first pair (freMTPLfreq and freMTPLsev) contains data on 413,169 insurance policies, while the second pair (freMTPL2freq and freMTPL2sev) covers 677,991 policies, both observed primarily over a one-year period. In each pair, the "freq" file contains risk features and claim numbers per policy, while the "sev" file provides claim amounts and corresponding policy IDs. Some claim amounts in both severity datasets are fixed according to the French IRSA-IDA claim convention.[^1]
+
+We'll start out by loading our data and doing some simple exploratory analysis to get a feel for what's going on. The data comes from the CASdatasets R package that accompanies the book "Computational Actuarial Science with R" edited by Arthur Charpentier. First we'll download the files from the git repository, then load them up. They are large files, so you'll have to wait a bit.
+
+```{python}
+urls = ["https://github.com/dutangc/CASdatasets/raw/master/data/freMTPLfreq.rda",
+        "https://github.com/dutangc/CASdatasets/raw/master/data/freMTPLsev.rda",
+        "https://github.com/dutangc/CASdatasets/raw/master/data/freMTPL2freq.rda",
+        "https://github.com/dutangc/CASdatasets/raw/master/data/freMTPL2sev.rda",
+        ]
+
+dfs = {}
+
+for url in urls:
+    filename = url.split('/')[-1]
+    file_path = os.path.join('data', filename)
+
+    print(f"Downloading {filename}...")
+    response = requests.get(url)
+
+    with open(file_path, "wb") as file:
+        file.write(response.content)
+    print(f"File saved to {file_path}")
+
+    try:
+        result = pyreadr.read_r(file_path)
+
+        dataset_name = os.path.splitext(filename)[0]
+        dfs[dataset_name] = result[list(result.keys())[0]]
+        print(f"Successfully loaded {dataset_name}")
+
+        print(f"Shape: {dfs[dataset_name].shape}\n")
+    except Exception as e:
+        print(f"Error loading {filename}: {e}\n")
+
+
+
+for name, df in dfs.items():
+    print(f"Preview of {name}:")
+    print(df.head())
+    print("-" * 80)
+
+
+freMTPLfreq_df = dfs['freMTPLfreq']
+freMTPLsev_df = dfs['freMTPLsev']
+freMTPL2freq_df = dfs['freMTPL2freq']
+freMTPL2sev_df = dfs['freMTPL2sev']
+
+
+
+
+```
+
+# Data Exploration
+
+
+
+
+
+
+
+# Footnotes
+
+[^1] https://dutangc.github.io/CASdatasets/reference/freMTPL.html
