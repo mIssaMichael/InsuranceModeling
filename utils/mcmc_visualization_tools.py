@@ -212,12 +212,6 @@ def plot_line_hist(ax, values,
   # Compute bin contents
   counts = numpy.histogram(values, bins=breaks)[0]
 
-  # Optional bin content printing
-  if print_bins:
-    print("Bin Contents:")
-    for i, (left, right, count) in enumerate(zip(breaks[:-1], breaks[1:], counts)):
-      print(f"Bin {i+1}: [{left:.2f}, {right:.2f}): {count} items")
-
   ylabel = "Counts"
   if prob:
     ylabel = "Empirical Bin Probability / Bin Width"
@@ -233,6 +227,12 @@ def plot_line_hist(ax, values,
     ax.set_xlabel(xlabel)
     ax.set_ylim([0, 1.1 * max(counts)])
     ax.set_ylabel(ylabel)
+
+  # Optional bin content printing
+  if print_bins:
+    print("Bin Contents:")
+    for i, (left, right, count) in enumerate(zip(breaks[:-1], breaks[1:], counts)):
+      print(f"Bin {i+1}: [{left:.2f}, {right:.2f}): {count} items")
 
 # Plot the overlay of two line histograms.
 # @ax Matplotlib axis object
