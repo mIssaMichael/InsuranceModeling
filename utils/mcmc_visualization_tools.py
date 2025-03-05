@@ -188,10 +188,18 @@ def configure_bin_plotting(breaks):
 #            plot or to create new axes; defaults to False
 # @param xlabel Label for x-axis; defaults to empty string.
 # @param title Plot title; defaults to empty string.
+# @ param print_bins; defaults to False
 def plot_line_hist(ax, values,
                    bin_min=None, bin_max=None, bin_delta=None,
                    prob=False, col="black", add=False,
-                   xlabel="", title=""):
+                   xlabel="", title="",
+                   print_bins=False):
+  """
+  Plot a line histogram with optional bin content printing.
+
+  Additional parameter:
+  @param print_bins Boolean to enable printing of bin contents (default: False)
+  """
   # Remove any nan values
   values = numpy.array(values)
   values = values[~numpy.isnan(values)]
@@ -209,6 +217,12 @@ def plot_line_hist(ax, values,
 
   # Compute bin contents
   counts = numpy.histogram(values, bins=breaks)[0]
+
+  # Optional bin content printing
+  if print_bins:
+    print("Bin Contents:")
+    for i, (left, right, count) in enumerate(zip(breaks[:-1], breaks[1:], counts)):
+      print(f"Bin {i+1}: [{left:.2f}, {right:.2f}): {count} items")
 
   ylabel = "Counts"
   if prob:

@@ -221,7 +221,7 @@ print(f"Number of unique policies that cash out a claim: {claims_df['PolicyID'].
 
 ```
 
-Around 800 of the policies are non-unique. Lets check the density of the claim amounts.
+Around 800 of the policies are non-unique. Lets check the density of the claim amounts first before considering unqiue policies.
 
 ```{python}
 fig, ax = plt.subplots(figsize=(10, 6))
@@ -231,10 +231,10 @@ utilsV.plot_line_hist(
         claims_df['ClaimAmount'],
         xlabel="Claim Amount",
         title="Distribution of Claim Amounts",
-        prob=False
+        print_bins=True,
     )
-
 ```
+
 
 
 # Footnotes
