@@ -30,12 +30,15 @@ format:
 format-links: false
 ---
 
+
 #
+
 
 > Willard van Orman Quine once said that he had a preference for a desert ontology. This was in an earlier day when concerns with logical structure and ontological simplicity reigned supreme... But Ockham's razor has a curiously ambiguous form... How do we determine what is necessary? With the right standards, one could remain an Ockhamite while recognizing a world which has the rich, multi-layered, and interdependent ontology of the tropical rain forest - that is, our world. It is tempting to believe that recognizing such a world view requires adopting lax standards, but I think the standards for this transformation are not lax, but only different. - William C. Wimsatt
 
 
 # Imports
+
 
 ```{python}
 import arviz as az
@@ -48,6 +51,7 @@ import warnings
 import pyreadr
 import os
 import cmdstanpy
+import sys
 from cmdstanpy import CmdStanModel
 
 warnings.filterwarnings("ignore")
@@ -66,7 +70,7 @@ c_dark_teal = "#1D4F4F"
 
 RANDOM_SEED = 58583389
 np.random.seed(RANDOM_SEED)
-az.style.use("arviz-whitegrid")
+az.style.use("arviz-white")
 
 plt.rcParams['font.family'] = 'serif'
 
@@ -88,72 +92,153 @@ plt.subplots_adjust(left=0.15, bottom=0.15, right=0.9, top=0.85)
 current_working_directory = os.getcwd()
 ```
 
+I'll also import some visualizatin and diagnostic tools from Michael Betancourt
 ```{python}
-# cmdstanpy.install_cmdstan(compiler=True)
+sys.path.append('utils')
+
+import mcmc_analysis_tools_pystan3 as utilsA
+import mcmc_visualization_tools as utilsV
+
+
 ```
 
 # Load Data
 Our dataset is the French Motor Third-Part Liability dataset. The French Motor Third-Party Liability datasets consist of two pairs of complementary files. The first pair (freMTPLfreq and freMTPLsev) contains data on 413,169 insurance policies, while the second pair (freMTPL2freq and freMTPL2sev) covers 677,991 policies, both observed primarily over a one-year period. In each pair, the "freq" file contains risk features and claim numbers per policy, while the "sev" file provides claim amounts and corresponding policy IDs. Some claim amounts in both severity datasets are fixed according to the French IRSA-IDA claim convention.[^1]
 
+
 We'll start out by loading our data and doing some simple exploratory analysis to get a feel for what's going on. The data comes from the CASdatasets R package that accompanies the book "Computational Actuarial Science with R" edited by Arthur Charpentier. First we'll download the files from the git repository, then load them up. They are large files, so you'll have to wait a bit.
 
+
 ```{python}
-urls = ["https://github.com/dutangc/CASdatasets/raw/master/data/freMTPLfreq.rda",
-        "https://github.com/dutangc/CASdatasets/raw/master/data/freMTPLsev.rda",
-        "https://github.com/dutangc/CASdatasets/raw/master/data/freMTPL2freq.rda",
-        "https://github.com/dutangc/CASdatasets/raw/master/data/freMTPL2sev.rda",
-        ]
+# urls = ["https://github.com/dutangc/CASdatasets/raw/master/data/freMTPLfreq.rda",
+#       "https://github.com/dutangc/CASdatasets/raw/master/data/freMTPLsev.rda",
+#       "https://github.com/dutangc/CASdatasets/raw/master/data/freMTPL2freq.rda",
+#       "https://github.com/dutangc/CASdatasets/raw/master/data/freMTPL2sev.rda",
+#       ]
 
-dfs = {}
+# dfs = {}
 
-for url in urls:
-    filename = url.split('/')[-1]
-    file_path = os.path.join('data', filename)
+# for url in urls:
+#   filename = url.split('/')[-1]
+#   file_path = os.path.join('data', filename)
 
-    print(f"Downloading {filename}...")
-    response = requests.get(url)
+#   print(f"Downloading {filename}...")
+#   response = requests.get(url)
 
-    with open(file_path, "wb") as file:
-        file.write(response.content)
-    print(f"File saved to {file_path}")
+#   with open(file_path, "wb") as file:
+#       file.write(response.content)
+#   print(f"File saved to {file_path}")
 
-    try:
-        result = pyreadr.read_r(file_path)
+#   try:
+#       result = pyreadr.read_r(file_path)
 
-        dataset_name = os.path.splitext(filename)[0]
-        dfs[dataset_name] = result[list(result.keys())[0]]
-        print(f"Successfully loaded {dataset_name}")
+#       dataset_name = os.path.splitext(filename)[0]
+#       dfs[dataset_name] = result[list(result.keys())[0]]
+#       print(f"Successfully loaded {dataset_name}")
 
-        print(f"Shape: {dfs[dataset_name].shape}\n")
-    except Exception as e:
-        print(f"Error loading {filename}: {e}\n")
-
-
-
-for name, df in dfs.items():
-    print(f"Preview of {name}:")
-    print(df.head())
-    print("-" * 80)
+#       print(f"Shape: {dfs[dataset_name].shape}\n")
+#   except Exception as e:
+#       print(f"Error loading {filename}: {e}\n")
 
 
-freMTPLfreq_df = dfs['freMTPLfreq']
-freMTPLsev_df = dfs['freMTPLsev']
-freMTPL2freq_df = dfs['freMTPL2freq']
-freMTPL2sev_df = dfs['freMTPL2sev']
 
-
+# for name, df in dfs.items():
+#   print(f"Preview of {name}:")
+#   print(df.head())
+#   print("-" * 80)
 
 
 ```
 
+
+We'll use parquet to convert the files to something a bit more efficient for loading and reading. Parquet does pretty well.
+
+
+```{python}
+# if not os.path.exists('data/parquet'):
+#     os.makedirs('data/parquet')
+
+# for name, df in dfs.items():
+#     parquet_path = f'data/parquet/{name}.parquet'
+
+#     for col in df.select_dtypes(include=['float64']).columns:
+#         df[col] = pd.to_numeric(df[col], downcast='float')
+#     for col in df.select_dtypes(include=['int64']).columns:
+#         df[col] = pd.to_numeric(df[col], downcast='integer')
+
+#     df.to_parquet(parquet_path)
+#     print(f"Saved {name} to {parquet_path}")
+
+```
+
+```{python}
+file_names = ["freMTPLfreq", "freMTPLsev", "freMTPL2freq", "freMTPL2sev"]
+parquet_dfs = {}
+for name in file_names:
+    parquet_path = f'data/parquet/{name}.parquet'
+    parquet_dfs[name] = pd.read_parquet(parquet_path)
+
+    print(f"\nSummary of {name}:")
+    print(f"Shape: {parquet_dfs[name].shape}")
+    print(f"Memory usage: {parquet_dfs[name].memory_usage(deep=True).sum() / 1024**2:.2f} MB")
+    print(f"Column types: {parquet_dfs[name].dtypes}")
+    print(parquet_dfs[name].head())
+    print("-" * 80)
+
+```
+
+
+
 # Data Exploration
 
+We'll focus on exploring the first pair of files where we have 413,169 data points for 10 risk features for the various policies divied out, and 16,181 data points of 2 variables in the accompanying "sev" file, which has claims amounts. We have a much smaller number of claims than insurance policies for individuals. This is typical in insurance because a small percentage of the people who buy insurance ever end up claiming any of it. we're let with the difficult task of handling this hetergenous mess of zero-inflated data.
 
 
+```{python}
+risks_df = parquet_dfs["freMTPLfreq"]
+claims_df = parquet_dfs["freMTPLsev"]
+
+```
 
 
+What we want to predict for insurance is the cost of a policy for a specific individual. The way insurance comapnies price these is a bit convoluted. The basic idea is that at the very least we want to make sure the expected present value of of the gross premium we receive from customers should be equal to the sum of the expected present value of the benefits and expected present value of the expenses.
+
+$$
+\text{EPV of benefits} + \text{EPV of expenses} = \text{EPV of gross premium income}
+$$
+
+The expected present value is the expectation of a random variable. The expected present value of the benefits is the expected present value of the the benefits paid out to policy holders. The expenses are things we don't care too much about when we study the pricing of beneifts. It includes things such as overhead costs. However we don't include anywhere in our little equation the expected value of the profit. As insurance comapnies are in the buisness of making money, we don't want to just break even but make a profit. We ignore this too.
+
+The expected present value can be decomposed in various ways. We can think of it as the product of the frequency of payouts multiplied by the severity of the payout and loading factor, where the loading factor is kind of a catchall term for any expenses that would ruin us if it ever occured and all other miscellaneous general expenses. Loading factors account for various things. These are the adverse claims, model error in estimating the other two variables, and overall volatility.
+
+What we can focus on here is the frequency of payouts and the severity. These are things we can model quite well. We also try to account for the error in our claims by partially modeling those extreme incidents that we might find in the loading factor.
+
+Now we can take a look at our data with these ideas in mind. We check to if there are and what the proportion is of any non-unique policy claims.
+
+```{python}
+print(f"Number of policies that cash out a claim: {len(claims_df['PolicyID'])}")
+print(f"Number of unique policies that cash out a claim: {claims_df['PolicyID'].nunique()}")
+
+```
+
+Around 800 of the policies are non-unique. Lets check the density of the claim amounts.
+
+```{python}
+fig, ax = plt.subplots(figsize=(10, 6))
+
+utilsV.plot_line_hist(
+        ax,
+        claims_df['ClaimAmount'],
+        xlabel="Claim Amount",
+        title="Distribution of Claim Amounts",
+        prob=False
+    )
+
+```
 
 
 # Footnotes
 
 [^1] https://dutangc.github.io/CASdatasets/reference/freMTPL.html
+
+[^2] https://eclass.uoa.gr/modules/document/file.php/MATH552/%CE%92%CE%B9%CE%B2%CE%BB%CE%AF%CE%B1/Text2.pdf
