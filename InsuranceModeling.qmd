@@ -229,13 +229,19 @@ fig, ax = plt.subplots(figsize=(10, 6))
 utilsV.plot_line_hist(
         ax,
         claims_df['ClaimAmount'],
+        bin_min = 0,
+        bin_max = claims_df['ClaimAmount'].max() + 100000,
         xlabel="Claim Amount",
         title="Distribution of Claim Amounts",
         print_bins=True,
     )
 ```
 
+We don't really glean much from the count plot about the outliers (because there are so few of them), but we see in the print out summaryt hat there are a few very large outlier claim amounts.
 
+```{python}
+claims_df['ClaimAmount'].max()
+```
 
 # Footnotes
 

@@ -194,12 +194,6 @@ def plot_line_hist(ax, values,
                    prob=False, col="black", add=False,
                    xlabel="", title="",
                    print_bins=False):
-  """
-  Plot a line histogram with optional bin content printing.
-
-  Additional parameter:
-  @param print_bins Boolean to enable printing of bin contents (default: False)
-  """
   # Remove any nan values
   values = numpy.array(values)
   values = values[~numpy.isnan(values)]
